@@ -68,7 +68,7 @@ mod tests {
         fn with_less_than_min_chars(&mut self) -> &Self {
             let text_list: Vec<&str> = vec!["a"; MINIMUM_CHARACTERS as usize - 1];
             self.text = text_list.join("");
-            self        
+            self
         }
 
         fn build(&self) -> Result<Post, Box<dyn DomainError>> {
@@ -149,10 +149,7 @@ mod tests {
 
         let err = post_result.err().unwrap();
 
-        assert_eq!(
-            err.get_message(),
-            "Post is too short"
-        );
+        assert_eq!(err.get_message(), "Post is too short");
         assert_eq!(err.get_code(), "POST_TOO_SHORT");
         assert_eq!(err.get_context().entity_id, "__ID__");
     }

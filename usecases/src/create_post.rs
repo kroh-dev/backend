@@ -1,9 +1,8 @@
 use std::rc::Rc;
 
 use domain::post::post::Post;
-use errors::domain_error::DomainError;
 
-use crate::{repositories::post_repository::PostRepository, usecase::Usecase};
+use crate::{errors::UsecaseErrors, repositories::post_repository::PostRepository, usecase::Usecase};
 
 struct CreatePostPayload {
     id: String,
@@ -15,19 +14,21 @@ struct CreatePost {
     post_repository: Rc<dyn PostRepository>,
 }
 
-type Error = Box<dyn DomainError>;
-
-impl Usecase<CreatePostPayload, Post, Error> for CreatePost {
-    fn execute(&self, payload: CreatePostPayload) -> Result<Post, Error> {
+impl Usecase<CreatePostPayload, Post, UsecaseErrors> for CreatePost {
+    fn execute(&self, payload: CreatePostPayload) -> Result<Post, UsecaseErrors> {
         let post_result = Post::new(payload.id, payload.user_id, payload.text);
 
         if post_result.is_err() {
-            return Err(post_result.err().unwrap());
+            return Err(UsecaseErrors::DomainError(post_result.err().unwrap()));
         }
 
         let post = post_result.ok().unwrap();
 
-        self.post_repository.create(&post);
+        let post_create_result = self.post_repository.create(&post);
+
+        if post_create_result.is_err() {
+            return Err(UsecaseErrors::TechnicalError(post_create_result.err().unwrap()));
+        }
 
         Ok(post)
     }
@@ -49,7 +50,7 @@ mod tests {
     }
 
     impl PostRepository for InMemoryPostRepository {
-        fn create(&self, post: &Post) {
+        fn create(&self, post: &Post) -> Result<(), Box<dyn TechnicalError>> {
             // In a real repository we'll always be accessing a remote process
             // and thus we'll never be updating state
             // To avoid making the create method mutable in the trait
@@ -59,17 +60,18 @@ mod tests {
                 let posts_ptr: *mut Vec<Post> = &mut (*self_mut_ptr).posts;
                 (*posts_ptr).push(post.clone());
             }
+            Ok(())
         }
 
-        fn get(&self, id: String) -> Result<Post, NotFoundError> {
+        fn get(&self, id: String) -> Result<Post, Box<dyn TechnicalError>> {
             match self.posts.iter().find(|post| post.id == id) {
                 Some(post) => Ok(post.clone()),
-                None => Err(NotFoundError::new("Post does not exist")),
+                None => Err(Box::new(NotFoundError::new("Post does not exist"))),
             }
         }
     }
 
-    use crate::errors::not_found::NotFoundError;
+    use crate::errors::{not_found::NotFoundError, technical_error::TechnicalError};
 
     use super::*;
 
