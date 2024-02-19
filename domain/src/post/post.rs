@@ -59,6 +59,18 @@ mod tests {
             self
         }
 
+        fn with_min_chars(&mut self) -> &Self {
+            let text_list: Vec<&str> = vec!["a"; MINIMUM_CHARACTERS as usize];
+            self.text = text_list.join("");
+            self
+        }
+
+        fn with_less_than_min_chars(&mut self) -> &Self {
+            let text_list: Vec<&str> = vec!["a"; MINIMUM_CHARACTERS as usize - 1];
+            self.text = text_list.join("");
+            self        
+        }
+
         fn build(&self) -> Result<Post, Box<dyn DomainError>> {
             Post::new(self.id.clone(), self.user_id.clone(), self.text.clone())
         }
@@ -109,6 +121,39 @@ mod tests {
             "Post exceeded the maximum allowed characters"
         );
         assert_eq!(err.get_code(), "POST_TOO_LONG");
+        assert_eq!(err.get_context().entity_id, "__ID__");
+    }
+
+    #[test]
+    fn alice_should_be_able_to_create_a_post_with_minimum_characters() {
+        let mut factory = PostFactory::default();
+        factory.with_min_chars();
+
+        let post_result = factory.build();
+
+        assert!(post_result.is_ok());
+        let post = post_result.ok().unwrap();
+
+        assert_eq!(post.text.len(), MINIMUM_CHARACTERS);
+    }
+
+    #[test]
+    fn alice_should_not_be_able_to_create_a_post_with_no_text() {
+        let mut factory = PostFactory::default();
+
+        factory.with_less_than_min_chars();
+
+        let post_result = factory.build();
+
+        assert!(post_result.is_err());
+
+        let err = post_result.err().unwrap();
+
+        assert_eq!(
+            err.get_message(),
+            "Post is too short"
+        );
+        assert_eq!(err.get_code(), "POST_TOO_SHORT");
         assert_eq!(err.get_context().entity_id, "__ID__");
     }
 }
