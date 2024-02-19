@@ -22,7 +22,7 @@ impl Usecase<CreatePostPayload, Post, Error> for CreatePost {
         let post_result = Post::new(payload.id, payload.user_id, payload.text);
 
         if post_result.is_err() {
-            return Err(Box::new(post_result.err().unwrap()));
+            return Err(post_result.err().unwrap());
         }
 
         let post = post_result.ok().unwrap();
@@ -50,6 +50,10 @@ mod tests {
 
     impl PostRepository for InMemoryPostRepository {
         fn create(&self, post: &Post) {
+            // In a real repository we'll always be accessing a remote process
+            // and thus we'll never be updating state
+            // To avoid making the create method mutable in the trait
+            // we use unsafe here.
             unsafe {
                 let self_mut_ptr: *mut Self = self as *const Self as *mut Self;
                 let posts_ptr: *mut Vec<Post> = &mut (*self_mut_ptr).posts;

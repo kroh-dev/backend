@@ -1,6 +1,9 @@
-use super::errors::post_too_long::PostTooLong;
+use errors::domain_error::DomainError;
+
+use super::errors::{post_too_long::PostTooLong, post_too_short::PostTooShort};
 
 const MAXIMUM_CHARACTERS: usize = 0xFFF;
+const MINIMUM_CHARACTERS: usize = 0x1;
 
 #[derive(Clone)]
 pub struct Post {
@@ -10,9 +13,13 @@ pub struct Post {
 }
 
 impl Post {
-    pub fn new(id: String, user_id: String, text: String) -> Result<Self, PostTooLong> {
-        if text.len() > MAXIMUM_CHARACTERS {
-            return Err(PostTooLong::new(id));
+    pub fn new(id: String, user_id: String, text: String) -> Result<Self, Box<dyn DomainError>> {
+        if text.trim().len() > MAXIMUM_CHARACTERS {
+            return Err(Box::new(PostTooLong::new(id)));
+        }
+
+        if text.trim().len() < MINIMUM_CHARACTERS {
+            return Err(Box::new(PostTooShort::new(id)));
         }
 
         Ok(Self { id, text, user_id })
@@ -52,7 +59,7 @@ mod tests {
             self
         }
 
-        fn build(&self) -> Result<Post, PostTooLong> {
+        fn build(&self) -> Result<Post, Box<dyn DomainError>> {
             Post::new(self.id.clone(), self.user_id.clone(), self.text.clone())
         }
     }
@@ -65,7 +72,7 @@ mod tests {
 
         assert!(post_result.is_ok());
 
-        let post = post_result.expect("lets gooo");
+        let post = post_result.ok().unwrap();
 
         assert_eq!(post.id, "__ID__".to_string());
         assert_eq!(post.user_id, "__USER_ID__".to_string());
@@ -80,7 +87,7 @@ mod tests {
         let post_result = factory.build();
 
         assert!(post_result.is_ok());
-        let post = post_result.unwrap();
+        let post = post_result.ok().unwrap();
 
         assert_eq!(post.text.len(), MAXIMUM_CHARACTERS);
     }
