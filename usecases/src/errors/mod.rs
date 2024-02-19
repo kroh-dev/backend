@@ -7,5 +7,5 @@ pub mod technical_error;
 
 pub enum UsecaseErrors {
     TechnicalError(Box<dyn TechnicalError>),
-    DomainError(Box<dyn DomainError>)
+    DomainError(Box<dyn DomainError>),
 }

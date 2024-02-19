@@ -2,7 +2,9 @@ use std::rc::Rc;
 
 use domain::post::post::Post;
 
-use crate::{errors::UsecaseErrors, repositories::post_repository::PostRepository, usecase::Usecase};
+use crate::{
+    errors::UsecaseErrors, repositories::post_repository::PostRepository, usecase::Usecase,
+};
 
 struct CreatePostPayload {
     id: String,
@@ -27,7 +29,9 @@ impl Usecase<CreatePostPayload, Post, UsecaseErrors> for CreatePost {
         let post_create_result = self.post_repository.create(&post);
 
         if post_create_result.is_err() {
-            return Err(UsecaseErrors::TechnicalError(post_create_result.err().unwrap()));
+            return Err(UsecaseErrors::TechnicalError(
+                post_create_result.err().unwrap(),
+            ));
         }
 
         Ok(post)
