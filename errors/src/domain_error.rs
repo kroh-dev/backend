@@ -18,6 +18,12 @@ pub trait DomainError {
 // Implement the Display trait for DomainError
 impl std::fmt::Display for dyn DomainError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {} ({})", self.get_code(), self.get_message(), self.get_context())
+        write!(
+            f,
+            "{}: {} ({})",
+            self.get_code(),
+            self.get_message(),
+            self.get_context()
+        )
     }
 }

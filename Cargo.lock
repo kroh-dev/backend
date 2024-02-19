@@ -12,3 +12,11 @@ dependencies = [
 [[package]]
 name = "errors"
 version = "0.1.0"
+
+[[package]]
+name = "usecases"
+version = "0.1.0"
+dependencies = [
+ "domain",
+ "errors",
+]

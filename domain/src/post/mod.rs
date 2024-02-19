@@ -1,2 +1,2 @@
-pub mod post;
 mod errors;
+pub mod post;

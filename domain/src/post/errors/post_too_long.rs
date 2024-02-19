@@ -2,15 +2,13 @@ use errors::domain_error::{DomainError, DomainErrorContext};
 
 #[derive(Debug)]
 pub struct PostTooLong {
-    context: DomainErrorContext
+    context: DomainErrorContext,
 }
 
 impl PostTooLong {
     pub fn new(entity_id: String) -> Self {
         Self {
-            context: DomainErrorContext {
-                entity_id
-            }
+            context: DomainErrorContext { entity_id },
         }
     }
 }
