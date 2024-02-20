@@ -1,37 +1,48 @@
-use std::rc::Rc;
-
+use async_trait::async_trait;
 use domain::post::post::Post;
+use std::sync::Arc;
 
 use crate::{
     errors::UsecaseErrors, repositories::post_repository::PostRepository, usecase::Usecase,
 };
 
-struct CreatePostPayload {
+pub struct CreatePostPayload {
     id: String,
     text: String,
     user_id: String,
 }
 
-struct CreatePost {
-    post_repository: Rc<dyn PostRepository>,
+impl CreatePostPayload {
+    pub fn new(id: String, user_id: String, text: String) -> Self {
+        Self { id, user_id, text }
+    }
 }
 
+pub struct CreatePost {
+    post_repository: Arc<dyn PostRepository + Send + Sync>,
+}
+
+impl CreatePost {
+    pub fn new(post_repository: Arc<dyn PostRepository + Send + Sync>) -> Self {
+        Self { post_repository }
+    }
+}
+
+#[async_trait]
 impl Usecase<CreatePostPayload, Post, UsecaseErrors> for CreatePost {
-    fn execute(&self, payload: CreatePostPayload) -> Result<Post, UsecaseErrors> {
+    async fn execute(&self, payload: CreatePostPayload) -> Result<Post, UsecaseErrors> {
         let post_result = Post::new(payload.id, payload.user_id, payload.text);
 
-        if post_result.is_err() {
-            return Err(UsecaseErrors::DomainError(post_result.err().unwrap()));
+        if let Err(err) = post_result {
+            return Err(UsecaseErrors::DomainError(err));
         }
 
         let post = post_result.ok().unwrap();
 
-        let post_create_result = self.post_repository.create(&post);
+        let post_create_result = self.post_repository.create(post.clone()).await;
 
-        if post_create_result.is_err() {
-            return Err(UsecaseErrors::TechnicalError(
-                post_create_result.err().unwrap(),
-            ));
+        if let Err(err) = post_create_result {
+            return Err(UsecaseErrors::TechnicalError(err));
         }
 
         Ok(post)
@@ -53,8 +64,9 @@ mod tests {
         }
     }
 
+    #[async_trait]
     impl PostRepository for InMemoryPostRepository {
-        fn create(&self, post: &Post) -> Result<(), Box<dyn TechnicalError>> {
+        async fn create(&self, post: Post) -> Result<(), Box<dyn TechnicalError>> {
             // In a real repository we'll always be accessing a remote process
             // and thus we'll never be updating state
             // To avoid making the create method mutable in the trait
@@ -67,7 +79,7 @@ mod tests {
             Ok(())
         }
 
-        fn get(&self, id: String) -> Result<Post, Box<dyn TechnicalError>> {
+        async fn get(&self, id: String) -> Result<Post, Box<dyn TechnicalError>> {
             match self.posts.iter().find(|post| post.id == id) {
                 Some(post) => Ok(post.clone()),
                 None => Err(Box::new(NotFoundError::new("Post does not exist"))),
@@ -79,26 +91,26 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn alice_should_be_able_to_create_a_post() {
-        let post_repository: Rc<dyn PostRepository> = Rc::new(InMemoryPostRepository::default());
-        let create_post = CreatePost {
-            post_repository: Rc::clone(&post_repository),
-        };
-
+    #[tokio::test]
+    async fn alice_should_be_able_to_create_a_post() {
+        let post_repository = Arc::new(InMemoryPostRepository::default());
         let id = "__ID__".to_string();
         let text = "hello world".to_string();
         let user_id = "__USER_ID__".to_string();
 
-        let create_post_result = create_post.execute(CreatePostPayload {
-            id: id.clone(),
-            text: text.clone(),
-            user_id: user_id.clone(),
-        });
+        let create_post = CreatePost::new(post_repository.clone());
+
+        let create_post_result = create_post
+            .execute(CreatePostPayload {
+                id: id.clone(),
+                text: text.clone(),
+                user_id: user_id.clone(),
+            })
+            .await;
 
         assert!(create_post_result.is_ok());
 
-        let post_result = post_repository.get("__ID__".into());
+        let post_result = post_repository.get("__ID__".into()).await;
 
         assert!(post_result.is_ok());
 

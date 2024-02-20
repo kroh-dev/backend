@@ -1,11 +1,12 @@
 use errors::domain_error::DomainError;
+use serde::{Deserialize, Serialize};
 
 use super::errors::{post_too_long::PostTooLong, post_too_short::PostTooShort};
 
 const MAXIMUM_CHARACTERS: usize = 0xFFF;
 const MINIMUM_CHARACTERS: usize = 0x1;
 
-#[derive(Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Post {
     pub id: String,
     pub user_id: String,
