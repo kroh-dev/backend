@@ -1,4 +1,6 @@
 mod mongodb;
+mod axum;
+mod di;
 
 use std::sync::Arc;
 
@@ -7,7 +9,7 @@ use usecases::{
     usecase::Usecase,
 };
 
-use crate::mongodb::{get_database, get_repositories};
+use crate::{axum::init_axum, mongodb::{get_database, get_repositories}};
 
 #[tokio::main]
 async fn main() -> Result<(), ()> {
@@ -20,6 +22,8 @@ async fn main() -> Result<(), ()> {
     let post_repository = get_repositories(&database);
 
     let create_post_usecase = CreatePost::new(Arc::new(post_repository));
+
+    init_axum().await;
 
     let create_post_payload = CreatePostPayload::new(
         "__ID__".to_string(),
